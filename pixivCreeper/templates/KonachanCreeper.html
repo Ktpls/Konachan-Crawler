@@ -1,0 +1,236 @@
+﻿<html>
+<head>
+    <meta charset="utf-8">
+    <title></title>
+</head>
+<body>
+    <style>
+        .footer{
+            left:0px;
+            bottom:0px;
+            position:fixed;
+            width:100%;
+            height:100px;
+            text-align:center;
+            <!-- font-size:18px; -->
+            <!-- font-weight:bold; -->
+        }
+    </style>
+    <div style="position:fixed; z-index:1;" class="footer">
+        <div>
+            <select id="sltDestSite"> 
+                <option value='Konachan'>Konachan</option> <!--记得同步服务器上的值-->
+                <option value='Yandere'>Yandere</option> 
+            </select> 
+            <button id="btnSwitchSite" onclick="btnSwitchSiteClick()">SwitchSite</button>
+            <label><input type="checkbox" id='chcSerie'/>GetASerie</label>
+        </div>
+        <div>
+            <input type="text" id="txtTag" placeholder="Tag">
+            <button id="btnSearchTags" onclick="btnSearchTagsClick()">SearchTags</button>
+        </div>
+        <div>
+            <button id="btnLoadPrevPage" onclick="btnLoadPrevPageClick()"><<</button>
+            <input type="text" id="txtPage" placeholder="curPage">
+            <button id="btnLoad" onclick="btnLoadClick()">LoadIt</button>
+            <button id="btnLoadNextPage" onclick="btnLoadNextPageClick()">>></button>
+        </div>
+        <div>
+            <button id="btnClearPictureList" onclick="btnClearPictureListClick()" style="bottom:0;">ClearThisPage</button>
+            <label><input type="checkbox" id='chcDownloadByIDM' checked='checked'/>DownloadByIDM</label>
+        </div>
+    </div>
+    <div align="center">
+        <div id="picPreview"></div>
+    </div>
+</body>
+</html>
+<script src="http://apps.bdimg.com/libs/jquery/1.11.1/jquery.min.js"></script>
+<script type='text/javascript'>
+    var picNumOnThisPage = 0
+    var curPage = 0
+    const SITE_INDEX_MAX=1
+    function LoadPage(site,page,tag){
+        var newpage=[]
+        $.ajaxSettings.async = true
+        $.get("/KonachanCreeper/More",{'site':site,'page':page,'tag':tag}, function(ret){
+            newpage=JSON.parse(ret)
+			$("#picPreview").append(
+			"\
+			<div>\
+				<span style='width:300px;height:35px;font-size:30px;background-color:bisque' id='pageInfoBar_"+ site + "_" + page + "_" + tag + "'>" + site +"上tag'"+tag+"'的第"+page+"页</span>\
+			</div>")
+			//var img1,img2,state1,state2,div1,div2;//div1装img div2装statebar
+			for (var i = 0; i < newpage.length; i += 2) {
+
+				div1 = document.createElement('div')
+				img1 = document.createElement('img')
+				img1.style.width = 300
+				img1.style.height = 255
+				img1.id = 'img' + (i + picNumOnThisPage).toString()
+				img1.src = newpage[i].preview
+				img1.onclick = Function('PictureClick(' + (i + picNumOnThisPage).toString() + ')')
+				img1.onmousedown = Function('PictureMouseDown(event,' + (i + picNumOnThisPage).toString() + ')')
+
+				img1.dataset.id = i + picNumOnThisPage
+				img1.dataset.downloaded = false
+				img1.dataset.preview = newpage[i].preview
+				img1.dataset.large = newpage[i].large
+				div1.append(img1)
+				if (i + 1 != newpage.length)//这行有两张图
+				{
+					img2 = document.createElement('img')
+					img2.style.width = 300
+					img2.style.height = 255
+					img2.id = 'img' + (i + 1 + picNumOnThisPage).toString()
+					img2.src = newpage[i + 1].preview
+					img2.onclick = Function('PictureClick(' + (i + 1 + picNumOnThisPage).toString() + ')')
+					img2.onmousedown = Function('PictureMouseDown(event,' + (i +1+ picNumOnThisPage).toString() + ')')
+
+					img2.dataset.id = i + 1 + picNumOnThisPage
+					img2.dataset.downloaded = false
+					img2.dataset.preview = newpage[i+1].preview
+					img2.dataset.large = newpage[i+1].large
+					div1.append(img2)
+				}
+
+				div2 = document.createElement('div')
+				state1 = document.createElement('span')
+				state1.style.width = 300
+				state1.style.height = 20
+				state1.id = "statebar" + (i + picNumOnThisPage).toString()
+				state1.innerHTML = '(=・ω・=)'
+				div2.append(state1)
+				if (i + 1 != newpage.length)//这行有两张图
+				{
+					state2 = document.createElement('span')
+					state2.style.width = 300
+					state2.style.height = 20
+					state2.id = "statebar" + (i + 1 + picNumOnThisPage).toString()
+					state2.innerHTML = '(=・ω・=)'
+					div2.append(state2)
+				}
+				$("#picPreview").append(div1)
+				$("#picPreview").append(div2)
+
+				//if (i + 1 == newpage.length)
+				//{//html版，不好维护
+				//    $("#picPreview").append(
+				//    "\
+				//    <div align= 'center'>\
+				//        <img style='width:300px;height:255px;' id='img"+(i+picNumOnThisPage).toString()+"' src='"+newpage[i].preview+"' onclick='PictureClick("+(i+picNumOnThisPage).toString()+",\""+newpage[i].preview+"\",\""+newpage[i].large+"\")'></img>\
+				//    </div >\
+				//    <div>\
+				//        <span style='width:300px;height:20px;' id='statebar"+(i+picNumOnThisPage).toString()+"'>(=・ω・=)</span>\
+				//    </div>")
+				//}
+				//else
+				//{
+				//    $("#picPreview").append(
+				//    "\
+				//    <div align= 'center'>\
+				//        <img style='width:300px;height:255px' id='img"+ (i + picNumOnThisPage).toString() + "' src='" + newpage[i].preview +"' onclick='PictureClick("+(i+picNumOnThisPage).toString()+",\""+newpage[i].preview+"\",\""+newpage[i].large+"\")'></img>\
+				//        <img style='width:300px;height:255px' id='img"+ (i + 1 + picNumOnThisPage).toString() + "' src='" + newpage[i + 1].preview + "' onclick='PictureClick("+(i+1+picNumOnThisPage).toString()+",\"" + newpage[i + 1].preview + "\",\"" + newpage[i + 1].large + "\")'></img>\
+				//    </div>\
+				//    <div>\
+				//        <span style='width:300px;height:20px;' id='statebar"+(i+picNumOnThisPage).toString()+"'>(=・ω・=)</span>\
+				//        <span style='width:300px;height:20px;' id='statebar"+(i+1+picNumOnThisPage).toString()+"'>(=・ω・=)</span>\
+				//    </div>")
+				//}
+			}
+			picNumOnThisPage+=newpage.length
+        })
+    }
+    function DownloadIMG(imgPathURL) {
+        var a = document.createElement('a')
+        a.download = ''
+        a.innerHTML = 'ClickMe!'
+        a.href=imgPathURL
+        a.click()
+    }
+    function DownloadIMGByIDM(imgPathURL) {
+        $.ajaxSettings.async = true
+        $.get("/KonachanCreeper/download",{'url':imgPathURL}, Function('javascript:void(0)'))
+    }
+    $(document).ready(function () {
+        document.getElementById('txtPage').value=curPage
+    });
+    function PictureClick(senderId) {
+        if (document.getElementById('chcDownloadByIDM').checked)
+        {
+            DownloadIMGByIDM(document.getElementById('img'+senderId).dataset.large)
+        }
+        else
+        {
+            DownloadIMG(document.getElementById('img'+senderId).dataset.large)
+        }
+        var statebar = document.getElementById('statebar' + senderId)
+        statebar.style = "background-color:aquamarine"
+        statebar.innerHTML = '(=>ω<=)'
+    }
+    function PictureMouseDown(e, senderId) {
+        if (e.button == 1)//中键
+        {
+            var picurl = document.getElementById('img' + senderId).dataset.large
+            var picname = picurl.slice(picurl.lastIndexOf('/')+1)
+            alert(picname)
+        }
+    }
+    function LoadPageByCurConfig() {//这些config包括 是否全站获取、当前选中站点、当前页
+        if(document.getElementById('chcSerie').checked)
+        {
+            curSite=document.getElementById('sltDestSite').selectedIndex
+            for(var i=0;i<=SITE_INDEX_MAX;i++)
+            {
+                document.getElementById('sltDestSite').selectedIndex=i
+                LoadPage(document.getElementById('sltDestSite').value,curPage,document.getElementById('txtTag').value)
+            }
+            document.getElementById('sltDestSite').selectedIndex=curSite
+        }
+        else
+            LoadPage(document.getElementById('sltDestSite').value,curPage,document.getElementById('txtTag').value)
+    }
+    function btnLoadClick() {
+        curPage = parseInt(document.getElementById('txtPage').value)
+        if (curPage < 1) {
+            curPage=1
+            document.getElementById('txtPage').value = curPage
+        }
+		LoadPageByCurConfig()
+    }
+    function btnLoadPrevPageClick() {
+        if(curPage==1)
+		{
+			alert('这正是第一页，你还想看第零页吗？')
+			return;
+		}
+        curPage -= 1
+        document.getElementById('txtPage').value = curPage
+		LoadPageByCurConfig()
+    }
+    function btnLoadNextPageClick() {
+        curPage += 1
+        document.getElementById('txtPage').value = curPage
+		LoadPageByCurConfig()
+    }
+    function btnClearPictureListClick() {
+        if(window.confirm("你真要清除吗?")){
+            document.getElementById('picPreview').innerHTML = '';
+        }
+    }
+    function btnSearchTagsClick() {
+        var searchPage
+        $.ajaxSettings.async = true
+        $.get("/KonachanCreeper/searchTag",{'site':document.getElementById('sltDestSite').value,'tag':document.getElementById('txtTag').value}, function(ret){
+            searchPage=ret
+			window.open(searchPage)
+        })
+    }
+    function btnSwitchSiteClick() {
+        var newindex=document.getElementById("sltDestSite").selectedIndex+1
+        if(newindex>SITE_INDEX_MAX)
+            document.getElementById("sltDestSite").selectedIndex=0
+        else
+            document.getElementById("sltDestSite").selectedIndex=newindex
+    }
+</script>
